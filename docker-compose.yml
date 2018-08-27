@@ -1,0 +1,11 @@
+version: '3.3'
+services: 
+    cvfactory: 
+        build:
+            context: ./
+        command: -f markdown -t docx resume.md -o resume.docx
+        volumes:
+            - ./:/source
+volumes:
+    source:
+
