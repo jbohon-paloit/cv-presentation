@@ -14,6 +14,13 @@ RUN cabal update && cabal install pandoc-${PANDOC_VERSION}
 
 WORKDIR /source
 
-ENTRYPOINT ["/root/.cabal/bin/pandoc"]
+#ENTRYPOINT ["/root/.cabal/bin/pandoc"]
+###
+#CMD ["--help"]
 
-CMD ["--help"]
+#Intall golang
+RUN apt-get install -y golang
+ADD . /usr/lib/go/src/pkg/hello-app
+RUN go install hello-app 
+RUN cp /usr/lib/go/bin/* .
+#ENTRYPOINT ["./hello-app"]

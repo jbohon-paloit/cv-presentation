@@ -3,9 +3,12 @@ services:
     cvfactory: 
         build:
             context: ./
-        command: -f markdown -t docx resume.md -o resume.docx
+            #command: -f markdown -t docx resume.md -o resume.docx
         volumes:
             - ./:/source
+        ports:
+            - 8085:8080
+        tty: true
 volumes:
     source:
 
