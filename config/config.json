@@ -1,0 +1,4 @@
+{
+  "PORT": 3000,
+  "PERMISSION_ADDRESS": "email_address_to_define"
+}

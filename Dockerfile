@@ -1,26 +1,16 @@
-FROM haskell:8.0
+FROM node:8
 
-MAINTAINER Adrien Loustaunau
-
-# install latex packages
-RUN apt-get update -y
-
-# will ease up the update process
-# updating this env variable will trigger the automatic build of the Docker image
-ENV PANDOC_VERSION "2.2.1"
-
-# install pandoc
-RUN cabal update && cabal install pandoc-${PANDOC_VERSION}
-
-WORKDIR /source
-
-#ENTRYPOINT ["/root/.cabal/bin/pandoc"]
-###
-#CMD ["--help"]
-
-#Intall golang
-RUN apt-get install -y golang
-ADD . /usr/lib/go/src/pkg/hello-app
-RUN go install hello-app 
-RUN cp /usr/lib/go/bin/* .
-#ENTRYPOINT ["./hello-app"]
+ADD package.json /cvfactory/package.json
+WORKDIR /cvfactory
+ADD pandoc-2.2.1-linux /pandoc
+ENV PATH /pandoc/bin:$PATH
+# Getting last version of yarn can cause a 'yarn: Permission denied' error
+# Not needed, yarn is included in the node image
+# RUN apt-get update && apt-get -y install libssl-dev && apt-get -y install nodejs npm && npm install -g yarn && apt-get -y clean 
+RUN apt-get update && apt-get -y install libssl-dev && apt-get -y clean 
+# RUN echo $(ls -l /usr/lib/x86_64-linux-gnu/libcurl*)
+RUN yarn install
+RUN yarn global add nodemon
+ADD auth.json .
+ADD config ./config
+ADD index.js .

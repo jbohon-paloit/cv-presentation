@@ -3,30 +3,108 @@ require('./config/config');
 const fs = require('fs');
 const {google} = require('googleapis');
 const async = require('async');
+const axios = require('axios');
 const express = require('express');
+const Git = require('nodegit');
+const pandoc = require('node-pandoc');
+
 const key = require('./auth.json');
 
 const app = express();
-const port = process.env.PORT || 3000;
-const permissionEmail = process.env.PERMISSION_ADDRESS || '';
+// const port = process.env.PORT || 3000;
+const port = 80;
 
 const SCOPES = ['https://www.googleapis.com/auth/drive'];
 const jwt = new google.auth.JWT(key.client_email, null, key.private_key, SCOPES);
 
+const permissionEmail = process.env.PERMISSION_ADDRESS || '';
 const permissionsToAdd = [{
   'type': 'user',
   'role': 'writer',
   'emailAddress': permissionEmail
 }];
+// const permissionsToAdd = [{
+//   'type': 'domain',
+//   'role': 'writer',
+//   'emailAddress': 'palo-it.com'
+// }];
 
-// Auth with async function
-// const auth = async (jwt) => {
-//   const drive = await jwt.authorize((err, response) => {
-//     console.log('auth');
-//     return google.drive({version: 'v3', auth: jwt});
-//   });
-//   return drive;
-// };
+const path = require('path');
+const url = "https://github.com/massardc/cv-fact.git";
+const local = "./resumes";
+
+async function gitClone() {
+  return Git.Clone(url, local).then((repo) => {
+    return repo;
+  }).catch(function (err) {
+    console.log('Error while cloning repo', err);
+    
+    return {
+      status: 400,
+      error: err
+    };
+  })
+}
+
+async function main() {
+  try {
+    const repo = await gitClone(url, local);
+    if (repo.status && repo.status === 400) {
+      console.log('repo', repo);
+      return repo.error;
+    }
+
+    fs.readdir(repo.workdir(), async (err, files) => {
+      if (err) {
+        return err;
+      }
+      mdFiles = files.filter((file) => path.extname(file) === '.md');
+      mdFiles.map(file => {
+        // Run pandoc transformation
+        const docxFile = `${path.basename(file, '.md')}.docx`;
+        const args = `-f markdown -o ./resumes/${docxFile}`;
+        let wentThrough = false;
+        console.log('file', file);
+        
+        const pandocCallback = (err, result) => {
+          if (!wentThrough) {
+            wentThrough = true;
+
+            if (err) {
+              console.error('Error on parsing: ',err);
+              return err;
+            } 
+            axios.post(`/files/${docxFile}`)
+              .then(response => {
+                console.log('File uploaded on Google Drive', response.data);
+              }).catch(error => {
+                console.log('Error during Google Drive upload', error);
+              });
+            return result;
+          }
+        }
+
+        // Call pandoc
+        pandoc(`./resumes/${file}`, args, pandocCallback);
+
+        return true;
+      });
+
+    });
+  } catch (e) {
+    console.log('Error', e);
+  }
+
+    // axios.get('/files')
+    // .then(response => {
+    //   console.log('RRRR', response.data[0].permissions);
+    //   console.log('RRR', response.data);
+    // }).catch(error => {
+    //   console.log(error);
+    // });
+}
+main();
+
 
 // POST /files -- File push to Google Drive
 app.post('/files/:fileName', (req, res) => {
@@ -36,7 +114,7 @@ app.post('/files/:fileName', (req, res) => {
       error: 'File name is incorrect.'
     });
   }
-  jwt.authorize(async (err, _) => {
+  jwt.authorize(async (err) => {
     const drive = google.drive({version: 'v3', auth: jwt});
     const response = await postFiles(drive, fileName);
 
@@ -49,14 +127,15 @@ app.post('/files/:fileName', (req, res) => {
 
 const postFiles = async (drive, fileName) => {
   const fileMetadata = {
-    'name': fileName
+    'name': fileName,
+    'mimeType': 'application/vnd.google-apps.document'
   };
 
   try {
     const media = {
       // TODO: Useful to get mime type or always docx?
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.template',
-      body: fs.createReadStream(`files/${fileName}`)
+      body: fs.createReadStream(`/cvfactory/resumes/${fileName}`)
     };
 
     const driveResponse = await drive.files.create({
@@ -92,6 +171,7 @@ const postFiles = async (drive, fileName) => {
 
 // GET /files -- Get files stored in Google Drive 
 app.get('/files', (req, res) => {
+  console.log('GET');
   jwt.authorize(async (err, _) => {
     const drive = google.drive({version: 'v3', auth: jwt});
     const response = await getFiles(drive);
@@ -107,7 +187,7 @@ const getFiles = async (drive) => {
   try {
     const driveResponse = await drive.files.list({
       pageSize: 20,
-      fields: 'nextPageToken, files(id, name, modifiedTime, permissions)',
+      fields: 'nextPageToken, files(id, name, modifiedTime, permissions, teamDriveId, owners, capabilities, shared, properties, isAppAuthorized)',
     });
     return {
       status: 200,
@@ -135,7 +215,7 @@ const updatePermission = (drive, fileId) => {
         console.error(err);
         permissionCallback(err);
       } else {
-        console.log('Permission ID: ', res.data.id)
+        console.log('Permission added: ', res.data.id)
         permissionCallback();
       }
     });
@@ -153,10 +233,14 @@ const updatePermission = (drive, fileId) => {
   });
 };
 
+app.get('/', (req, res) => {
+  res.send('Hello world\n');
+});
+
+
 app.listen(port, () => {
   console.log(`Started up on port ${port}.`);
 });
-
 
 // For testing purpose only, method not used
 const deleteFile = (drive, fileId) => {
