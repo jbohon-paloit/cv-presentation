@@ -1,0 +1,9 @@
+gcloud auth configure-docker
+
+docker push eu.gcr.io/project3962142345/project3962142345
+
+#docker tag [SOURCE_IMAGE] [HOSTNAME]/[PROJECT-ID]/[IMAGE]:[TAG]
+
+#docker push [HOSTNAME]/[PROJECT-ID]/[IMAGE]:[TAG]
+
+kubectl run cvfactory --image=push eu.gcr.io/project3843296/cvfactory:v1 --port 80
