@@ -1,122 +1,75 @@
 require('./config/config');
 
-const fs = require('fs');
-const {google} = require('googleapis');
-const async = require('async');
 const axios = require('axios');
+const bodyParser = require('body-parser');
 const express = require('express');
-const Git = require('nodegit');
-const pandoc = require('node-pandoc');
+const fs = require('fs');
+const { google } = require('googleapis');
 
 const key = require('./auth.json');
+const winston = require('./config/winston');
+
+const { getFiles, postFiles } = require('./src/functions/drive-utils');
+const { gitClone } = require('./src/functions/repo-clone');
+const { readDirectory } = require('./src/functions/read-directory');
 
 const app = express();
-// const port = process.env.PORT || 3000;
-const port = 80;
+const port = process.env.PORT || 3000;
 
-const SCOPES = ['https://www.googleapis.com/auth/drive'];
+// Middlewares
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.json());
+
+const SCOPES = process.env.SCOPES;
 const jwt = new google.auth.JWT(key.client_email, null, key.private_key, SCOPES);
 
-const permissionEmail = process.env.PERMISSION_ADDRESS || '';
-const permissionsToAdd = [{
-  'type': 'user',
-  'role': 'writer',
-  'emailAddress': permissionEmail
-}];
-// const permissionsToAdd = [{
-//   'type': 'domain',
-//   'role': 'writer',
-//   'emailAddress': 'palo-it.com'
-// }];
-
 const path = require('path');
-const url = "https://github.com/massardc/cv-fact.git";
-const local = "./resumes";
-
-async function gitClone() {
-  return Git.Clone(url, local).then((repo) => {
-    return repo;
-  }).catch(function (err) {
-    console.log('Error while cloning repo', err);
-    
-    return {
-      status: 400,
-      error: err
-    };
-  })
-}
+const url = process.env.GIT_REPO_CV_URL;
+const local = path.join(__dirname, 'resumes')
 
 async function main() {
   try {
-    const repo = await gitClone(url, local);
-    if (repo.status && repo.status === 400) {
-      console.log('repo', repo);
-      return repo.error;
+    if (!fs.existsSync(local)) {
+      const repo = await gitClone(url, local);
+
+      if (repo.status && repo.status  === 400) {
+        return repo.error;
+      }
     }
 
-    fs.readdir(repo.workdir(), async (err, files) => {
-      if (err) {
-        return err;
-      }
-      mdFiles = files.filter((file) => path.extname(file) === '.md');
-      mdFiles.map(file => {
-        // Run pandoc transformation
-        const docxFile = `${path.basename(file, '.md')}.docx`;
-        const args = `-f markdown -o ./resumes/${docxFile}`;
-        let wentThrough = false;
-        console.log('file', file);
-        
-        const pandocCallback = (err, result) => {
-          if (!wentThrough) {
-            wentThrough = true;
+    readDirectory(local);
 
-            if (err) {
-              console.error('Error on parsing: ',err);
-              return err;
-            } 
-            axios.post(`/files/${docxFile}`)
-              .then(response => {
-                console.log('File uploaded on Google Drive', response.data);
-              }).catch(error => {
-                console.log('Error during Google Drive upload', error);
-              });
-            return result;
-          }
-        }
-
-        // Call pandoc
-        pandoc(`./resumes/${file}`, args, pandocCallback);
-
-        return true;
-      });
-
-    });
   } catch (e) {
-    console.log('Error', e);
+    winston.log('error', e);
   }
 
-    // axios.get('/files')
-    // .then(response => {
-    //   console.log('RRRR', response.data[0].permissions);
-    //   console.log('RRR', response.data);
-    // }).catch(error => {
-    //   console.log(error);
-    // });
+  axios.get('/files')
+    .then(response => {
+      winston.log('info', 'Response data %s', JSON.stringify(response.data, null, 1));
+      // response.data.map((myFile) => deleteFile(myFile.id));
+    }).catch(error => {
+      winston.log('error', 'Error while getting files ' + error);
+    });
 }
 main();
-
 
 // POST /files -- File push to Google Drive
 app.post('/files/:fileName', (req, res) => {
   const fileName = req.params.fileName;
+  const folderId = req.body.folderId;
+
   if (!fileName) {
     return res.status(400).send({
       error: 'File name is incorrect.'
     });
   }
   jwt.authorize(async (err) => {
+    if (err) {
+      winston.log('error', err);
+      return err;
+    }
     const drive = google.drive({version: 'v3', auth: jwt});
-    const response = await postFiles(drive, fileName);
+    const response = await postFiles(drive, fileName, folderId);
 
     if (response.status === 400) {
       return res.status(400).send(response.error.errors);
@@ -125,54 +78,13 @@ app.post('/files/:fileName', (req, res) => {
   });
 });
 
-const postFiles = async (drive, fileName) => {
-  const fileMetadata = {
-    'name': fileName,
-    'mimeType': 'application/vnd.google-apps.document'
-  };
-
-  try {
-    const media = {
-      // TODO: Useful to get mime type or always docx?
-      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.template',
-      body: fs.createReadStream(`/cvfactory/resumes/${fileName}`)
-    };
-
-    const driveResponse = await drive.files.create({
-      resource: fileMetadata,
-      media: media,
-      fields: 'id',
-      writersCanShare: true
-    });
-
-    // Updating permission(s) right after file push to Drive throws an error (500)
-    // Waiting 5 secs allows us to bypass that
-    const perm = await setTimeout(() => {
-      return updatePermission(drive, driveResponse.data.id);
-    }, 5000); 
-
-    if (perm.status === 400) {
-      return {
-        status: 400,
-        error: perm.error
-      };
-    }
-    return {
-      status: 200,
-      data: driveResponse.data.id
-    };
-  } catch (e) {
-    return {
-      status: 400,
-      error: e
-    };
-  }
-};
-
 // GET /files -- Get files stored in Google Drive 
 app.get('/files', (req, res) => {
-  console.log('GET');
-  jwt.authorize(async (err, _) => {
+  jwt.authorize(async (err) => {
+    if (err) {
+      winston.log('error', err);
+      return err;
+    }
     const drive = google.drive({version: 'v3', auth: jwt});
     const response = await getFiles(drive);
 
@@ -183,75 +95,22 @@ app.get('/files', (req, res) => {
   });
 }); 
 
-const getFiles = async (drive) => {
-  try {
-    const driveResponse = await drive.files.list({
-      pageSize: 20,
-      fields: 'nextPageToken, files(id, name, modifiedTime, permissions, teamDriveId, owners, capabilities, shared, properties, isAppAuthorized)',
-    });
-    return {
-      status: 200,
-      data: driveResponse.data.files
-    };
-  } catch (e) {
-    return {
-      status: 400,
-      error: e
-    };
-  }
-};
-
-// Using the NPM module 'async'.
-// Add permission to email associated in config/config.json
-// So account has access to file.
-const updatePermission = (drive, fileId) => {
-  async.eachSeries(permissionsToAdd, function (permission, permissionCallback) {
-    drive.permissions.create({
-      resource: permission,
-      fileId: fileId,
-      fields: 'id',
-    }, function (err, res) {
-      if (err) {
-        console.error(err);
-        permissionCallback(err);
-      } else {
-        console.log('Permission added: ', res.data.id)
-        permissionCallback();
-      }
-    });
-  }, function (err) {
-    if (err) {
-      return {
-        status: 400,
-        error: err
-      };
-    } else {
-      return {
-        status: 200
-      };
-    }
-  });
-};
-
-app.get('/', (req, res) => {
-  res.send('Hello world\n');
-});
-
 
 app.listen(port, () => {
-  console.log(`Started up on port ${port}.`);
+  winston.log('info', `Started up on port ${port}.`);
 });
 
 // For testing purpose only, method not used
-const deleteFile = (drive, fileId) => {
+const deleteFile = (fileId) => {
+  const drive = google.drive({version: 'v3', auth: jwt});
   drive.files.delete({
     'fileId': fileId
   }, function (err, file) {
     if (err) {
       // Handle error
-      console.error(err);
+      winston.log('error', err);
     } else {
-      console.log('File deleted ');
+      winston.log('info', 'File deleted ');
     }
   });
 };

@@ -1,4 +1,6 @@
 {
-  "PORT": 3000,
-  "PERMISSION_ADDRESS": "email_address_to_define"
+  "PORT": 80,
+  "SCOPES": ["https://www.googleapis.com/auth/drive"],
+  "PERMISSION_ADDRESS": "to_be_defined",
+  "GIT_REPO_CV_URL": "https://github.com/massardc/cv-fact.git"
 }
