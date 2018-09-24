@@ -17,6 +17,7 @@
     "googleapis": "^33.0.0",
     "moment": "^2.22.2",
     "node-pandoc": "^0.3.0",
+    "node-rsa": "^1.0.1",
     "nodegit": "^0.22.2",
     "nodemon": "^1.18.4",
     "winston": "^3.1.0"

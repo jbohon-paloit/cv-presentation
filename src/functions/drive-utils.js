@@ -10,7 +10,7 @@ const fs = require('fs');
 const { google } = require('googleapis');
 const moment = require('moment');
 
-const key = require('../../auth.json');
+const key = require('../../production-auth.json');
 const SCOPES = process.env.SCOPES;
 
 const jwt = new google.auth.JWT(key.client_email, null, key.private_key, SCOPES);

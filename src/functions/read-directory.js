@@ -32,7 +32,7 @@ const readDirectory = (local) => {
         await pandocCallback(err, result, file, folderId);
       });
 
-      return true;c
+      return true;
     });
   });
 };
