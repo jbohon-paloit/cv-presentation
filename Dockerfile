@@ -2,8 +2,8 @@ FROM node:8
 
 COPY package.json /cvfactory/package.json
 WORKDIR /cvfactory
-ADD https://github.com/jgm/pandoc/releases/download/2.2.1/pandoc-2.2.1-linux.tar.gz /pandoc
-#COPY pandoc-2.2.1-linux /pandoc
+#ADD https://github.com/jgm/pandoc/releases/download/2.2.1/pandoc-2.2.1-linux.tar.gz /pandoc
+COPY pandoc-2.2.1-linux /pandoc
 ENV PATH /pandoc/bin:$PATH
 # Getting last version of yarn can cause a 'yarn: Permission denied' error
 # Not needed, yarn is included in the node image

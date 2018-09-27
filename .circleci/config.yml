@@ -16,6 +16,7 @@ jobs:
 
     steps:
       - checkout
+      - run: wget https://github.com/jgm/pandoc/releases/download/2.2.1/pandoc-2.2.1-linux.tar.gz && tar -xvf pandoc-2.2.1-linux.tar.gz
       - run: sudo apt-get update && sudo apt-get -y install libssl-dev && sudo apt-get -y clean
       - run: yarn install
       - run: yarn global add nodemon
