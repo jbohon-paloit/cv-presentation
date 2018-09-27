@@ -1,0 +1,3 @@
+init terraform : terraform init
+test configuration : terraform plan -out plan.terraform
+run terraform : terraform apply

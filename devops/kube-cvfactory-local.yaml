@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name : cvfactory
+spec:
+  selector:
+    matchLabels:
+      app: cvfactory-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: cvfactory-app
+    spec:
+      containers:
+        - name: cvfactory-app
+          image: eu.gcr.io/julien-test-78574643/cvfactory
+          args: ["yarn", "run", "serve"]
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - mountPath: /keys
+              name: key-cvfactory
+      volumes:
+        - name: key-cvfactory
+          secret:
+            secretName: key-cvfactory

@@ -1,0 +1,3 @@
+gcloud auth list
+gcloud config set account julien.bohon@gmail.com
+gcloud auth activate-service-account [ACCOUNT] --key-file=KEY_FILE
