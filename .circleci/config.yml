@@ -11,8 +11,8 @@ jobs:
 
     working_directory: ~/cvfactory
 
-    environment:
-      PATH:/pandoc/bin:$PATH
+    #environment:
+    #  PATH:/pandoc/bin:$PATH
 
     steps:
       - checkout
