@@ -16,13 +16,9 @@ jobs:
 
     steps:
       - checkout
-
       - run: sudo apt-get update && sudo apt-get -y install libssl-dev && sudo apt-get -y clean
-
       - run: yarn install
-
       - run: yarn global add nodemon
-
       - run: echo $(pwd) && echo $(ls -l)
 
   deploy_to_staging:
@@ -59,8 +55,9 @@ jobs:
       - run:
           name: Deploy to Kubernetes
           command: |
-            #kubectl run ${PROJECT_NAME} --image=eu.gcr.io/${GOOGLE_PROJECT_ID}/${PROJECT_NAME}:${CIRCLE_SHA1} --port 80 yarn run serve
+            cd devops
             kubectl create -f kube-cvfactory.yaml
+            kubectl create -f kube-cvfactory-service.yaml
 workflows:
   version: 2
   build_test_deploy:

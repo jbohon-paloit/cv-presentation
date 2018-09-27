@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: cvfactory
+  name: ${PROJECT_NAME}
 spec:
   type: LoadBalancer
   ports:
   - port: 80
     targetPort: 80
   selector:
-    app: cvfactory-app
+    app: ${PROJECT_NAME}-app
