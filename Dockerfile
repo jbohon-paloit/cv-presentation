@@ -12,8 +12,7 @@ RUN apt-get update && apt-get -y install libssl-dev && apt-get -y clean
 # RUN echo $(ls -l /usr/lib/x86_64-linux-gnu/libcurl*)
 RUN yarn install
 RUN yarn global add nodemon
-VOLUME /keys
 COPY config ./config
-COPY encrypted ./encrypted
 COPY src ./src
 COPY index.js .
+VOLUME auth

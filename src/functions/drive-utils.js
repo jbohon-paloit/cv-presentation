@@ -10,7 +10,7 @@ const fs = require('fs');
 const { google } = require('googleapis');
 const moment = require('moment');
 
-const key = require('../../production-auth.json');
+const key = require('../../auth/production-auth.json');
 const SCOPES = process.env.SCOPES;
 
 const jwt = new google.auth.JWT(key.client_email, null, key.private_key, SCOPES);
@@ -57,7 +57,7 @@ const createFolder = async () => {
           console.log('ee', e);
           reject(perm.error);
         }
-      }, 5000); 
+      }, 5000);
 
     });
   });
@@ -122,7 +122,7 @@ const postFiles = async (drive, fileName, folderId) => {
     // Waiting 5 secs allows us to bypass that
     const perm = await setTimeout(() => {
       return updatePermission(drive, driveResponse.data.id);
-    }, 5000); 
+    }, 5000);
 
     if (perm.status === 400) {
       return {

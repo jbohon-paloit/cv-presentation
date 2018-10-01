@@ -10,7 +10,7 @@ const { google } = require('googleapis');
 const path = require('path');
 
 // Auth & logs
-const key = require('./production-auth.json');
+const key = require('./auth/production-auth.json');
 const winston = require('./config/winston');
 
 // Custom functions
@@ -80,7 +80,7 @@ app.post('/files/:fileName', (req, res) => {
   });
 });
 
-// GET /files -- Get files stored in Google Drive 
+// GET /files -- Get files stored in Google Drive
 app.get('/files', (req, res) => {
   jwt.authorize(async (err) => {
     if (err) {
@@ -96,7 +96,7 @@ app.get('/files', (req, res) => {
     }
     res.send(response.data);
   });
-}); 
+});
 
 
 app.listen(port, () => {
