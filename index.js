@@ -43,7 +43,7 @@ app.post('/github/push', async (req, res) => {
     if (!fs.existsSync(local)) {
       const repo = await gitClone(url, local);
 
-      if (repo.status && repo.status  === 400) {
+      if (repo.status && repo.status === 400) {
         return repo.error;
       }
     }
@@ -53,15 +53,6 @@ app.post('/github/push', async (req, res) => {
   } catch (e) {
     winston.log('error', e);
   }
-
-  // List files
-  // axios.get('/files')
-  //   .then(response => {
-  //     winston.log('info', 'Response data %s', JSON.stringify(response.data, null, 1));
-  //     // response.data.map((myFile) => deleteFile(myFile.id));
-  //   }).catch(error => {
-  //     winston.log('error', 'Error while getting files ' + error);
-  //   });
 });
 
 // POST /files -- File push to Google Drive
