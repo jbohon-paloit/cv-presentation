@@ -1,27 +1,11 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Service
 metadata:
-  name : ${PROJECT_NAME}
+  name: cvfactory
 spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
   selector:
-    matchLabels:
-      app: ${PROJECT_NAME}-app
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        app: ${PROJECT_NAME}-app
-    spec:
-      containers:
-        - name: ${PROJECT_NAME}-app
-          image: ${REPOSITORY}
-          args: ["yarn", "run", "serve"]
-          ports:
-            - containerPort: 80
-          volumeMounts:
-            - mountPath: /keys
-              name: key-${PROJECT_NAME}
-      volumes:
-        - name: key-${PROJECT_NAME}
-          secret:
-            secretName: key-${PROJECT_NAME}
+    app: cvfactory-app

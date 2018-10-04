@@ -19,9 +19,9 @@ spec:
           ports:
             - containerPort: 80
           volumeMounts:
-            - mountPath: /keys
-              name: key-cvfactory
+            - mountPath: /cvfactory/auth
+              name: auth-drive
       volumes:
-        - name: key-cvfactory
+        - name : auth-drive
           secret:
-            secretName: key-cvfactory
+            secretName: auth-drive-cvfactory
